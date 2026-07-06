@@ -1,0 +1,143 @@
+{% extends "logbook/base.html" %}
+
+{% block content %}
+
+  <nav class="strip" aria-label="Activity pages">
+    <span class="lbl">Pages</span>
+    {% for n in page_range %}
+      <a class="dot {% if n == page %}current{% endif %}"
+         href="{% url 'activity' n %}"
+         {% if n == page %}aria-current="page"{% endif %}>{{ n }}</a>
+    {% endfor %}
+  </nav>
+
+  <form class="card" id="activity-form" novalidate>
+
+    {% if is_first %}
+      <div class="field">
+        <label class="lab" for="student_id">Student ID</label>
+        <input type="text" id="student_id" name="student_id" autocomplete="off"
+               placeholder="e.g. 20123456">
+      </div>
+    {% endif %}
+
+    <div class="row">
+      <div class="field">
+        <label class="lab" for="start_time">Start time</label>
+        <input type="datetime-local" id="start_time" name="start_time">
+      </div>
+      <div class="field">
+        <label class="lab" for="end_time">End time
+          <span class="hint" id="duration"></span>
+        </label>
+        <input type="datetime-local" id="end_time" name="end_time">
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="toggles">
+        <label class="toggle">
+          <input type="checkbox" name="new_learning">
+          <span class="t-text">This is new learning
+            <small>Something you had not done or known before</small>
+          </span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" name="within_hours">
+          <span class="t-text">Within regular working hours
+            <small>Completed during your contracted hours</small>
+          </span>
+        </label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="lab" for="what_did">What you did</label>
+      <textarea id="what_did" name="what_did"
+                placeholder="Describe the activity or task you carried out."></textarea>
+    </div>
+
+    <div class="field">
+      <label class="lab" for="what_learned">What you learned</label>
+      <textarea id="what_learned" name="what_learned"
+                placeholder="What did you take away from it? New skills, insights or understanding."></textarea>
+    </div>
+
+    <div class="field">
+      <label class="lab">KSBs covered <span class="count" id="ksb-count">0 selected</span></label>
+      {% for group_name, items in ksb_groups %}
+        <div class="ksb-group">
+          <h3>{{ group_name }}</h3>
+          <div class="ksb-grid">
+            {% for code, short, full in items %}
+              <label class="ksb" title="{{ full }}">
+                <input type="checkbox" name="ksb" value="{{ code }}">
+                <span><span class="code">{{ code }}</span><span class="desc">{{ short }}</span></span>
+              </label>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="actions">
+      <div>
+        <button type="button" class="btn primary" id="save-btn">Save activity</button>
+        <span class="save-note" id="save-note" hidden>Saved (front-end only — nothing is stored yet)</span>
+      </div>
+      <div class="nav-btns">
+        {% if prev_page %}
+          <a class="btn" href="{% url 'activity' prev_page %}">&larr; Previous</a>
+        {% else %}
+          <span class="btn" aria-disabled="true">&larr; Previous</span>
+        {% endif %}
+        {% if next_page %}
+          <a class="btn" href="{% url 'activity' next_page %}">Next &rarr;</a>
+        {% else %}
+          <span class="btn" aria-disabled="true">Next &rarr;</span>
+        {% endif %}
+      </div>
+    </div>
+
+  </form>
+
+  <p class="footnote">Front-end prototype. Entries are not saved between pages or on refresh.</p>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    // Live count of selected KSBs
+    var count = document.getElementById("ksb-count");
+    var boxes = document.querySelectorAll('input[name="ksb"]');
+    function refreshCount() {
+      var n = document.querySelectorAll('input[name="ksb"]:checked').length;
+      count.textContent = n + (n === 1 ? " selected" : " selected");
+    }
+    boxes.forEach(function (b) { b.addEventListener("change", refreshCount); });
+
+    // Duration hint from start/end
+    var start = document.getElementById("start_time");
+    var end = document.getElementById("end_time");
+    var dur = document.getElementById("duration");
+    function refreshDuration() {
+      if (!start.value || !end.value) { dur.textContent = ""; return; }
+      var diff = (new Date(end.value) - new Date(start.value)) / 60000;
+      if (isNaN(diff) || diff < 0) { dur.textContent = "— check times"; return; }
+      var h = Math.floor(diff / 60), m = Math.round(diff % 60);
+      dur.textContent = "— " + (h ? h + "h " : "") + m + "m";
+    }
+    start.addEventListener("change", refreshDuration);
+    end.addEventListener("change", refreshDuration);
+
+    // Save is a placeholder in this front-end build
+    var saveBtn = document.getElementById("save-btn");
+    var saveNote = document.getElementById("save-note");
+    saveBtn.addEventListener("click", function () {
+      saveNote.hidden = false;
+      setTimeout(function () { saveNote.hidden = true; }, 2600);
+    });
+  })();
+</script>
+{% endblock %}
